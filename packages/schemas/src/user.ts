@@ -17,3 +17,10 @@ export const userSessionSchema = z.object({
   orgId: z.string().optional(),
 })
 export type UserSession = z.infer<typeof userSessionSchema>
+
+// Payload schema to synchronize a newly logged-in tenant
+export const syncTenantRequestSchema = z.object({
+  orgName: z.string().min(1, 'Organization name is required').max(100),
+})
+export type SyncTenantRequestInput = z.infer<typeof syncTenantRequestSchema>
+
