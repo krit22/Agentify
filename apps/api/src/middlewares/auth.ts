@@ -30,7 +30,9 @@ export const clerkAuthMiddleware = (): MiddlewareHandler<AppEnv> => {
 
     // 2. Production Clerk validation checking
     const secretKey = process.env.CLERK_SECRET_KEY
-    if (!secretKey) {
+    const isClerkConfigured = secretKey && !secretKey.startsWith('sk_test_...')
+
+    if (!isClerkConfigured) {
       if (process.env.NODE_ENV === 'production') {
         c.status(500)
         return c.json({ error: 'Clerk configuration is missing. Authentication failed close.' })
