@@ -11,7 +11,7 @@ export const ticketStatusSchema = z.enum(['OPEN', 'PENDING_CUSTOMER', 'RESOLVED'
 
 // Public widget ticket manual escalation schema
 export const ticketEscalationSchema = z.object({
-  orgId: z.string().uuid('Organization ID must be a valid UUID'),
+  orgId: z.string().min(1, 'Organization ID is required'),
   sessionId: z.string().uuid('Session ID must be a valid UUID'),
   userEmail: z.string().email('Please enter a valid email address'),
   userSummary: z.string().min(10, 'Please describe your request in at least 10 characters').max(1000),

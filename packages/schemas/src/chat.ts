@@ -19,7 +19,7 @@ export type ConversationTranscript = z.infer<typeof conversationTranscriptSchema
 
 // Incoming widget chat request schema
 export const widgetChatRequestSchema = z.object({
-  orgId: z.string().uuid('Organization ID must be a valid UUID'),
+  orgId: z.string().min(1, 'Organization ID is required'),
   sessionId: z.string().uuid('Session ID must be a valid UUID'),
   message: z.string().min(1, 'Message query cannot be empty').max(2000),
 })
