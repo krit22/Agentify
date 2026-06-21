@@ -33,59 +33,64 @@ export class AuthService {
     const cycleEnd = new Date()
     cycleEnd.setDate(cycleEnd.getDate() + 30) // Default 30-day billing cycle
 
-    const newOrg = await prisma.$transaction(async (tx) => {
-      // Create Organization
-      const org = await tx.organization.create({
-        data: {
-          id: orgId,
-          name: orgName,
-        },
-      })
+    const newOrg = await prisma.$transaction(
+      async (tx) => {
+        // Create Organization
+        const org = await tx.organization.create({
+          data: {
+            id: orgId,
+            name: orgName,
+          },
+        })
 
-      // Create OrgSettings
-      await tx.orgSettings.create({
-        data: {
-          orgId,
-          vectorScoreThreshold: 0.74,
-          defaultTicketUrgency: 'med',
-          escalationSLAHours: 24,
-        },
-      })
+        // Create OrgSettings
+        await tx.orgSettings.create({
+          data: {
+            orgId,
+            vectorScoreThreshold: 0.74,
+            defaultTicketUrgency: 'med',
+            escalationSLAHours: 24,
+          },
+        })
 
-      // Create WidgetConfig
-      await tx.widgetConfig.create({
-        data: {
-          orgId,
-          brandColor: '#4F46E5', // Indigo Hex default
-          widgetPosition: 'right',
-          greetingMessage: 'Hello! How can we help you today?',
-          allowedDomains: [],
-        },
-      })
+        // Create WidgetConfig
+        await tx.widgetConfig.create({
+          data: {
+            orgId,
+            brandColor: '#4F46E5', // Indigo Hex default
+            widgetPosition: 'right',
+            greetingMessage: 'Hello! How can we help you today?',
+            allowedDomains: [],
+          },
+        })
 
-      // Create OrgBillingUsage (storageBytes and tokensConsumed as BigInt)
-      await tx.orgBillingUsage.create({
-        data: {
-          orgId,
-          tier: 'FREE',
-          docsCount: 0,
-          storageBytes: BigInt(0),
-          queriesThisMonth: 0,
-          tokensConsumed: BigInt(0),
-          billingCycleStart: new Date(),
-          billingCycleEnd: cycleEnd,
-        },
-      })
+        // Create OrgBillingUsage (storageBytes and tokensConsumed as BigInt)
+        await tx.orgBillingUsage.create({
+          data: {
+            orgId,
+            tier: 'FREE',
+            docsCount: 0,
+            storageBytes: BigInt(0),
+            queriesThisMonth: 0,
+            tokensConsumed: BigInt(0),
+            billingCycleStart: new Date(),
+            billingCycleEnd: cycleEnd,
+          },
+        })
 
-      return tx.organization.findUnique({
-        where: { id: orgId },
-        include: {
-          settings: true,
-          widgetConfig: true,
-          billingUsage: true,
-        },
-      })
-    })
+        return tx.organization.findUnique({
+          where: { id: orgId },
+          include: {
+            settings: true,
+            widgetConfig: true,
+            billingUsage: true,
+          },
+        })
+      },
+      {
+        timeout: 15000,
+      }
+    )
 
     return {
       isNew: true,
