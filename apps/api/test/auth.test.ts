@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { app } from '../app.js'
+import { app } from '../src/app.js'
 
 // Mock database package
 vi.mock('@repo/db', () => {
