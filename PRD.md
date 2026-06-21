@@ -83,7 +83,7 @@ graph TD
 The decision engine governing the chat touchpoint.
 
 #### REQ-1.1: Standardized Tool Arsenal
-On every single user turn, the Vercel AI SDK instance must supply the Anthropic (Claude 3.5 Sonnet / Claude 3 Haiku) model with exactly four defined tools:
+On every single user turn, the Vercel AI SDK instance must supply the OpenRouter model (`nvidia/nemotron-3-ultra-550b-a55b:free`) with exactly four defined tools:
 1. `search_knowledge_base({ query: string })`
    * *Description:* Queries Pinecone for matching knowledge chunks.
 2. `ask_clarifying_question({ ambiguous_topic: string, options?: string[] })`
@@ -103,7 +103,7 @@ sequenceDiagram
     participant Widget as Web Widget
     participant API as Fastify API
     participant PC as Pinecone Vector DB
-    participant LLM as Claude 3.5 Sonnet
+    participant LLM as Nemotron-3 Ultra 550B
 
     Sam->>Widget: Submits query: "How to upgrade billing?"
     Widget->>API: POST /api/chat (SSE Stream)
@@ -221,7 +221,7 @@ The human workspace and the "Knowledge Harvesting" flywheel.
 * **Widget JS script load time:** `< 150ms` globally over CDN.
 
 ### NFR-3: Graceful LLM Degradation
-If the Anthropic API times out (`> 5,000ms`) or returns a `529 Overloaded` error, the Fastify API must intercept the error and emit a synthetic tool call to `raise_ticket` with the note: *"Escalated automatically due to upstream AI provider failure."*
+If the OpenRouter API times out (`> 5,000ms`) or returns a gateway error, the Fastify API must intercept the error and emit a synthetic tool call to `raise_ticket` with the note: *"Escalated automatically due to upstream AI provider failure."*
 
 ---
 

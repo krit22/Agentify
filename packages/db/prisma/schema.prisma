@@ -1,0 +1,165 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING_CUSTOMER
+  RESOLVED
+}
+
+enum BillingTier {
+  FREE
+  GROWTH
+  ENTERPRISE
+}
+
+enum IngestionStatus {
+  QUEUED
+  EXTRACTING
+  EMBEDDING
+  READY
+  FAILED
+}
+
+model Organization {
+  id           String        @id @default(uuid()) // Maps to Clerk org_id
+  name         String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Settings & Customization
+  settings     OrgSettings?
+  widgetConfig WidgetConfig?
+  billingUsage OrgBillingUsage?
+
+  // Relations
+  documents     Document[]
+  tickets       Ticket[]
+  conversations Conversation[]
+  analytics     DailyAnalytics[]
+
+  @@index([id])
+}
+
+model OrgSettings {
+  id                    String       @id @default(uuid())
+  orgId                 String       @unique
+  organization          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vectorScoreThreshold  Float        @default(0.74) // Custom similarity gate A
+  defaultTicketUrgency  String       @default("med") // 'low' | 'med' | 'high'
+  escalationSLAHours    Int          @default(24)
+}
+
+model WidgetConfig {
+  id              String       @id @default(uuid())
+  orgId           String       @unique
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  brandColor      String       @default("#4F46E5") // Indigo Hex
+  logoUrl         String?
+  widgetPosition  String       @default("right") // 'left' | 'right'
+  greetingMessage String       @default("Hello! How can we help you today?")
+  allowedDomains  String[]     // Domain origin validation (CORS & Referrer check)
+}
+
+model OrgBillingUsage {
+  id                String       @id @default(uuid())
+  orgId             String       @unique
+  organization      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tier              BillingTier  @default(FREE)
+  docsCount         Int          @default(0)
+  storageBytes      BigInt       @default(0)
+  queriesThisMonth  Int          @default(0)
+  tokensConsumed    BigInt       @default(0)
+  billingCycleStart DateTime     @default(now())
+  billingCycleEnd   DateTime
+}
+
+model Document {
+  id           String          @id @default(uuid())
+  orgId        String
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  title        String
+  sourceUrl    String?         // URL pointing to R2/S3 raw file
+  status       IngestionStatus @default(QUEUED)
+  errorMessage String?         // Log error details if ingestion fails
+  fileSize     Int             @default(0)
+  version      Int             @default(1)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  chunks       DocumentChunk[]
+
+  @@index([orgId])
+  @@index([status])
+}
+
+model DocumentChunk {
+  id                 String   @id @default(uuid())
+  documentId         String
+  document           Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  pageNumber         Int?
+  sectionHeader      String?
+  rawContent         String   // Original extracted text
+  vectorId           String   // Maps to the ID string stored in Pinecone
+  createdAt          DateTime @default(now())
+
+  @@index([documentId])
+}
+
+model Conversation {
+  id           String       @id @default(uuid())
+  orgId        String
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sessionId    String       // Bound to aegis_session_id UUIDv4 in localStorage
+  endUserEmail String?
+  transcript   Json         // Stores array of CoreMessage items [{role: 'user', content: '...'}, ...]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  ticket       Ticket?
+
+  @@index([orgId, sessionId])
+}
+
+model Ticket {
+  id             String       @id @default(uuid())
+  orgId          String
+  organization   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  conversationId String       @unique
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  status         TicketStatus @default(OPEN)
+  userSummary    String
+  userContact    String       // Email provided by user
+  aiDebugData    Json?        // Stores top 3 chunks, similarity scores, and doubt reason
+  createdAt      DateTime     @default(now())
+  resolvedAt     DateTime?
+
+  // Closed Loop Harvester Output
+  harvestedQ     String?      // Post-resolution harvested question
+  harvestedA     String?      // Post-resolution harvested answer
+  harvestedAt    DateTime?
+
+  @@index([orgId, status])
+}
+
+model DailyAnalytics {
+  id                String       @id @default(uuid())
+  orgId             String
+  organization      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  date              DateTime     @default(now())
+  totalQueries      Int          @default(0)
+  deflectedQueries  Int          @default(0) // Answered successfully by bot
+  escalatedQueries  Int          @default(0) // Turned into tickets
+  avgVectorScore    Float        @default(0.0)
+  tokensUsed        Int          @default(0)
+
+  @@unique([orgId, date])
+}

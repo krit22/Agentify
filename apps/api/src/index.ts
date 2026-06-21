@@ -1,5 +1,7 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { prisma, pinecone } from '@repo/db'
+
 
 const app = new Hono()
 

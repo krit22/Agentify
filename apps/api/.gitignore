@@ -26,3 +26,5 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+backend_architecture.md
+verification_plan.md
