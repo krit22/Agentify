@@ -208,4 +208,48 @@ describe('POST /api/orgs/tickets/:ticketId/harvest', () => {
       fileName: `synthetic_qa_${ticketId}.md`,
     })
   })
+
+  it('should return 400 Bad Request when question payload is too short', async () => {
+    // Act
+    const res = await app.request('/api/orgs/tickets/ticket_123/harvest', {
+      method: 'POST',
+      headers: {
+        'x-mock-org-id': 'org_test_123',
+        'x-mock-user-id': 'user_test_123',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        publish: true,
+        question: 'Short Q',
+        answer: 'Navigate to organization settings under billing usage dashboard.',
+      }),
+    })
+    const body = await res.json()
+
+    // Assert
+    expect(res.status).toBe(400)
+    expect(body.success).toBe(false)
+  })
+
+  it('should return 400 Bad Request when answer payload is too short', async () => {
+    // Act
+    const res = await app.request('/api/orgs/tickets/ticket_123/harvest', {
+      method: 'POST',
+      headers: {
+        'x-mock-org-id': 'org_test_123',
+        'x-mock-user-id': 'user_test_123',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        publish: true,
+        question: 'How do I change billing cycle?',
+        answer: 'Short A',
+      }),
+    })
+    const body = await res.json()
+
+    // Assert
+    expect(res.status).toBe(400)
+    expect(body.success).toBe(false)
+  })
 })
