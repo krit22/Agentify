@@ -13,6 +13,252 @@ export interface HarvestTicketParams {
 
 export class TicketService {
   /**
+   * Retrieves paginated database records matching orgId, ordered by creation times.
+   */
+  public static async listTickets(params: {
+    orgId: string
+    status?: 'OPEN' | 'PENDING_CUSTOMER' | 'RESOLVED'
+    page: number
+    limit: number
+  }) {
+    const { orgId, status, page, limit } = params
+    const skip = (page - 1) * limit
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { orgId }
+    if (status) {
+      where.status = status
+    }
+
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          conversation: true,
+        },
+      }),
+      prisma.ticket.count({ where }),
+    ])
+
+    return {
+      tickets,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    }
+  }
+
+  /**
+   * Retrieves a single ticket with transcript.
+   */
+  public static async getTicketDetail(orgId: string, ticketId: string) {
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        id: ticketId,
+        orgId,
+      },
+      include: {
+        conversation: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new Error(`Ticket with ID ${ticketId} not found or does not belong to this organization.`)
+    }
+
+    return ticket
+  }
+
+  /**
+   * Appends support rep response, flips status to PENDING_CUSTOMER, and emails client via Resend.
+   */
+  public static async replyTicket(orgId: string, ticketId: string, message: string) {
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        id: ticketId,
+        orgId,
+      },
+      include: {
+        conversation: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new Error(`Ticket with ID ${ticketId} not found or does not belong to this organization.`)
+    }
+
+    const conversation = ticket.conversation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let transcript: any[] = []
+    if (conversation.transcript && typeof conversation.transcript === 'object') {
+      if (Array.isArray(conversation.transcript)) {
+        transcript = [...conversation.transcript]
+      }
+    } else if (typeof conversation.transcript === 'string') {
+      try {
+        transcript = JSON.parse(conversation.transcript)
+      } catch {
+        transcript = []
+      }
+    }
+
+    transcript.push({ role: 'assistant', content: message })
+
+    // Update ticket status to PENDING_CUSTOMER and conversation transcript
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: {
+        status: 'PENDING_CUSTOMER',
+        conversation: {
+          update: {
+            transcript: transcript,
+          },
+        },
+      },
+      include: {
+        conversation: true,
+      },
+    })
+
+    // Send email via Resend
+    const resendApiKey = process.env.RESEND_API_KEY
+    if (resendApiKey) {
+      try {
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Aegis Support <support@inbound.aegis.ai>',
+            to: ticket.userContact,
+            subject: `Re: [Aegis Support] ${ticket.userSummary.slice(0, 50)}...`,
+            text: message,
+            reply_to: `${ticket.id}@inbound.aegis.ai`,
+          }),
+        })
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text()
+          console.error('Failed to send email via Resend API:', errorText)
+        }
+      } catch (e) {
+        console.error('Failed to send email via Resend API due to connection error:', e)
+      }
+    } else {
+      console.warn('RESEND_API_KEY is not configured. Email notification skipped.')
+    }
+
+    return updatedTicket
+  }
+
+  /**
+   * Evaluates ticket dialog transcript via OpenRouter and suggests a resolved Q&A layout.
+   */
+  public static async suggestResolution(orgId: string, ticketId: string) {
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        id: ticketId,
+        orgId,
+      },
+      include: {
+        conversation: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new Error(`Ticket with ID ${ticketId} not found or does not belong to this organization.`)
+    }
+
+    const conversation = ticket.conversation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let transcript: any[] = []
+    if (conversation.transcript && typeof conversation.transcript === 'object') {
+      if (Array.isArray(conversation.transcript)) {
+        transcript = conversation.transcript
+      }
+    } else if (typeof conversation.transcript === 'string') {
+      try {
+        transcript = JSON.parse(conversation.transcript)
+      } catch {
+        transcript = []
+      }
+    }
+
+    // Default fallback values
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastUserMsg = transcript.filter((m: any) => m.role === 'user').pop()?.content || ticket.userSummary
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastAssistantMsg = transcript.filter((m: any) => m.role === 'assistant').pop()?.content || ''
+    
+    let suggestedQuestion = lastUserMsg
+    let suggestedAnswer = lastAssistantMsg
+
+    const apiKey = process.env.OPENROUTER_API_KEY
+    if (apiKey) {
+      try {
+        const transcriptText = transcript
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((m: any) => `${m.role === 'user' ? 'Client' : 'Support Rep'}: ${m.content}`)
+          .join('\n')
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://aegis.ai',
+            'X-Title': 'Aegis AI',
+          },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-3-8b-instruct:free',
+            messages: [
+              {
+                role: 'system',
+                content: `Identify the user's main resolved question and compile the responder's approved solution. Return STRICTLY as a JSON object matching this schema: { "suggestedQuestion": string, "suggestedAnswer": string }`
+              },
+              {
+                role: 'user',
+                content: `Conversation transcript:\n${transcriptText}\n\nTicket Summary: ${ticket.userSummary}`
+              }
+            ],
+            response_format: { type: 'json_object' }
+          }),
+        })
+
+        if (response.ok) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const resBody: any = await response.json()
+          const text = resBody.choices?.[0]?.message?.content
+          if (text) {
+            const parsed = JSON.parse(text)
+            if (parsed.suggestedQuestion && parsed.suggestedAnswer) {
+              suggestedQuestion = parsed.suggestedQuestion
+              suggestedAnswer = parsed.suggestedAnswer
+            }
+          }
+        } else {
+          console.error('OpenRouter suggest resolution request failed:', await response.text())
+        }
+      } catch (e) {
+        console.error('Error calling OpenRouter for suggestion:', e)
+      }
+    } else {
+      console.warn('OPENROUTER_API_KEY is not defined. Using conversation fallback for suggested Q&A.')
+    }
+
+    return {
+      ticketId,
+      suggestedQuestion,
+      suggestedAnswer,
+    }
+  }
+
+  /**
    * Resolves a support ticket, logs harvested Q&A, and triggers layout ingestion if publish is enabled.
    */
   public static async harvestTicket(params: HarvestTicketParams) {

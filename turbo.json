@@ -14,7 +14,8 @@
     "SUPABASE_BUCKET",
     "OPENROUTER_API_KEY",
     "UNSTRUCTURED_API_KEY",
-    "UNSTRUCTURED_API_URL"
+    "UNSTRUCTURED_API_URL",
+    "RESEND_API_KEY"
   ],
   "tasks": {
     "build": {

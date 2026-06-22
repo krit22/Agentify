@@ -17,7 +17,7 @@ export class DocumentController {
       }
 
       // 2. Retrieve validated query parameters from Hono Zod Validator middleware
-      const query = c.req.valid('query') as DocumentQueryInput
+      const query = c.req.valid('query' as never) as DocumentQueryInput
       const { status, page, limit } = query
 
       // 3. Delegate business logic query execution to service layer
@@ -68,8 +68,9 @@ export class DocumentController {
         documentId: result.id,
         status: result.status,
       })
-    } catch (error) {
-      console.error('Upload document controller error:', error)
+    } catch (err) {
+      console.error('Upload document controller error:', err)
+      const error = err as Error
       
       // Handle known validation errors from saveFile or service
       if (
@@ -108,8 +109,9 @@ export class DocumentController {
       // 4. Return 202 Accepted representing background task enqueued
       c.status(202)
       return c.json({ message: 'Document deletion job enqueued successfully.' })
-    } catch (error) {
-      console.error('Delete document controller error:', error)
+    } catch (err) {
+      console.error('Delete document controller error:', err)
+      const error = err as Error
 
       if (error.message.includes('not found') || error.message.includes('does not exist')) {
         c.status(404)

@@ -21,7 +21,8 @@
     "dotenv": "^16.4.5",
     "hono": "^4.12.26",
     "ioredis": "^5.11.1",
-    "jose": "^6.2.3"
+    "jose": "^6.2.3",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

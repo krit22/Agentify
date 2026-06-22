@@ -2,7 +2,8 @@ import { prisma } from '@repo/db'
 
 export interface SyncTenantResult {
   isNew: boolean
-  organization: unknown
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  organization: any
 }
 
 /**

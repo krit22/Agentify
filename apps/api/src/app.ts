@@ -8,6 +8,9 @@ import healthRouter from './routes/health.js'
 import authRouter from './routes/auth.js'
 import documentRouter from './routes/document.js'
 import ticketRouter from './routes/ticket.js'
+import settingsRouter from './routes/settings.js'
+import webhookRouter from './routes/webhook.js'
+import widgetRouter from './routes/widget.js'
 
 export const app = new Hono<AppEnv>()
 
@@ -39,6 +42,9 @@ app.route('/health', healthRouter)
 app.route('/api/auth', authRouter)
 app.route('/api/orgs/documents', documentRouter)
 app.route('/api/orgs/tickets', ticketRouter)
+app.route('/api/orgs/settings', settingsRouter)
+app.route('/api/webhooks', webhookRouter)
+app.route('/api/widget', widgetRouter)
 
 app.get('/', (c) => {
   return c.text('Aegis AI Support Platform API (Hono Server)')
