@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { app } from '../src/app.js'
 
@@ -8,6 +9,8 @@ vi.mock('@repo/db', () => {
       findMany: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
     },
     $transaction: vi.fn(),
   }
@@ -34,6 +37,7 @@ vi.mock('../src/services/queue.js', () => {
   return {
     QueueService: {
       enqueueIngestion: vi.fn(),
+      enqueueDeletion: vi.fn(),
     },
   }
 })
@@ -241,3 +245,80 @@ describe('POST /api/orgs/documents', () => {
     })
   })
 })
+
+describe('DELETE /api/orgs/documents/:docId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should return 401 Unauthorized when auth headers are missing', async () => {
+    // Act
+    const res = await app.request('/api/orgs/documents/doc_123', {
+      method: 'DELETE',
+    })
+    const body = await res.json()
+
+    // Assert
+    expect(res.status).toBe(401)
+    expect(body.error).toContain('Authentication required')
+  })
+
+  it('should return 404 Not Found when document does not exist for the org', async () => {
+    // Arrange
+    vi.mocked(prisma.document.findFirst).mockResolvedValueOnce(null)
+
+    // Act
+    const res = await app.request('/api/orgs/documents/doc_missing', {
+      method: 'DELETE',
+      headers: {
+        'x-mock-org-id': 'org_test_123',
+        'x-mock-user-id': 'user_test_123',
+      },
+    })
+    const body = await res.json()
+
+    // Assert
+    expect(res.status).toBe(404)
+    expect(body.error).toContain('not found')
+    expect(prisma.document.findFirst).toHaveBeenCalledWith({
+      where: { id: 'doc_missing', orgId: 'org_test_123' },
+    })
+  })
+
+  it('should return 202 Accepted, flag status to FAILED, and enqueue vector/file deletion', async () => {
+    // Arrange
+    const orgId = 'org_test_123'
+    const docId = 'doc_uuid_456'
+    const mockDoc = { id: docId, orgId, title: 'Old_Doc.pdf' }
+
+    vi.mocked(prisma.document.findFirst).mockResolvedValueOnce(mockDoc as any)
+    vi.mocked(prisma.document.update).mockResolvedValueOnce(mockDoc as any)
+
+    // Act
+    const res = await app.request(`/api/orgs/documents/${docId}`, {
+      method: 'DELETE',
+      headers: {
+        'x-mock-org-id': orgId,
+        'x-mock-user-id': 'user_test_123',
+      },
+    })
+    const body = await res.json()
+
+    // Assert
+    expect(res.status).toBe(202)
+    expect(body.message).toContain('enqueued successfully')
+
+    expect(prisma.document.findFirst).toHaveBeenCalledWith({
+      where: { id: docId, orgId },
+    })
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: docId },
+      data: { status: 'FAILED', errorMessage: 'Scheduled for deletion' },
+    })
+    expect(QueueService.enqueueDeletion).toHaveBeenCalledWith({
+      documentId: docId,
+      orgId,
+    })
+  })
+})
+

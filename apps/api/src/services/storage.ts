@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import path from 'path'
 
-let supabaseClient: any = null
+let supabaseClient: ReturnType<typeof createClient> | null = null
 
 /**
  * Lazily instantiates the Supabase client to avoid module-load environment race conditions.

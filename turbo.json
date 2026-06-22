@@ -1,6 +1,21 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "PORT",
+    "NODE_ENV",
+    "DATABASE_URL",
+    "DIRECT_URL",
+    "PINECONE_API_KEY",
+    "PINECONE_INDEX",
+    "CLERK_SECRET_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_BUCKET",
+    "OPENROUTER_API_KEY",
+    "UNSTRUCTURED_API_KEY",
+    "UNSTRUCTURED_API_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

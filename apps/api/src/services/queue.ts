@@ -3,6 +3,7 @@ import { redisConnection } from '@repo/db'
 
 // Initialize the BullMQ Ingestion Queue using the shared Redis Connection
 export const ingestionQueue = new Queue('document-ingestion', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   connection: redisConnection as any,
 })
 
@@ -31,6 +32,27 @@ export class QueueService {
       },
       removeOnComplete: true, // Clean up Redis memory once job completes successfully
       removeOnFail: false,   // Keep failed jobs in Redis for logs and debugging desk context
+    })
+  }
+
+  /**
+   * Enqueues a document deletion cleanup task to background workers.
+   */
+  public static async enqueueDeletion(data: {
+    documentId: string
+    orgId: string
+  }): Promise<void> {
+    console.log(`[QUEUE] Enqueuing deletion cleanup task for document ${data.documentId} (org: ${data.orgId})`)
+
+    // Add cleanup job to BullMQ queue with name 'delete-doc'
+    await ingestionQueue.add('delete-doc', data, {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+      removeOnComplete: true,
+      removeOnFail: false,
     })
   }
 }

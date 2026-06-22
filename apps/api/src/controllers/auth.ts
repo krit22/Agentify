@@ -12,7 +12,7 @@ export class AuthController {
       const orgId = c.get('orgId')
       const userId = c.get('userId')
       
-      const body = (c.req as any).valid('json') as any
+      const body = c.req.valid('json') as { orgName?: string }
       const orgName = body.orgName || 'My Organization'
 
       if (!orgId || !userId) {

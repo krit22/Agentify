@@ -119,5 +119,42 @@ export class DocumentService {
       status: document.status,
     }
   }
+
+  /**
+   * Sets document status to FAILED and enqueues cleanup job in BullMQ to purge vector space and raw storage.
+   */
+  public static async deleteDocument(params: {
+    orgId: string
+    docId: string
+  }): Promise<void> {
+    const { orgId, docId } = params
+
+    // 1. Verify that target document belongs to the organization
+    const document = await prisma.document.findFirst({
+      where: {
+        id: docId,
+        orgId,
+      },
+    })
+
+    if (!document) {
+      throw new Error(`Document with ID ${docId} not found or does not belong to this organization.`)
+    }
+
+    // 2. Set database status to FAILED with errorMessage marking scheduled deletion
+    await prisma.document.update({
+      where: { id: docId },
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Scheduled for deletion',
+      },
+    })
+
+    // 3. Enqueue cleanup task in BullMQ
+    await QueueService.enqueueDeletion({
+      documentId: docId,
+      orgId,
+    })
+  }
 }
 

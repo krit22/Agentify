@@ -24,4 +24,12 @@ documentRouter.post(
   DocumentController.upload
 )
 
+// DELETE /api/orgs/documents/:docId
+// Enforces JWT validation and enqueues a background deletion job
+documentRouter.delete(
+  '/:docId',
+  clerkAuthMiddleware(),
+  DocumentController.delete
+)
+
 export default documentRouter

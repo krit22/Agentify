@@ -2,7 +2,7 @@ import { prisma } from '@repo/db'
 
 export interface SyncTenantResult {
   isNew: boolean
-  organization: any
+  organization: unknown
 }
 
 /**
@@ -36,7 +36,7 @@ export class AuthService {
     const newOrg = await prisma.$transaction(
       async (tx) => {
         // Create Organization
-        const org = await tx.organization.create({
+        await tx.organization.create({
           data: {
             id: orgId,
             name: orgName,

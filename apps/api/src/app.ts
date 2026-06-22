@@ -7,6 +7,7 @@ import type { AppEnv } from './types/index.js'
 import healthRouter from './routes/health.js'
 import authRouter from './routes/auth.js'
 import documentRouter from './routes/document.js'
+import ticketRouter from './routes/ticket.js'
 
 export const app = new Hono<AppEnv>()
 
@@ -37,6 +38,7 @@ if (process.env.CLERK_SECRET_KEY && !process.env.CLERK_SECRET_KEY.startsWith('sk
 app.route('/health', healthRouter)
 app.route('/api/auth', authRouter)
 app.route('/api/orgs/documents', documentRouter)
+app.route('/api/orgs/tickets', ticketRouter)
 
 app.get('/', (c) => {
   return c.text('Aegis AI Support Platform API (Hono Server)')
