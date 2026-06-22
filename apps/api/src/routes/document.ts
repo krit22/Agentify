@@ -16,4 +16,12 @@ documentRouter.get(
   DocumentController.list
 )
 
+// POST /api/orgs/documents
+// Enforces JWT validation and uploads file to Supabase Storage and enqueues BullMQ layout parsing
+documentRouter.post(
+  '/',
+  clerkAuthMiddleware(),
+  DocumentController.upload
+)
+
 export default documentRouter

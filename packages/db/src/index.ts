@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { Pinecone } from '@pinecone-database/pinecone'
+import { Redis } from 'ioredis'
 
 // Ensure singletons are used in development to prevent hot-reloading from opening too many connections.
 const globalForDb = globalThis as unknown as {
   prisma: PrismaClient | undefined
   pinecone: Pinecone | undefined
+  redis: Redis | undefined
 }
 
 // 1. Prisma Client Initialization
@@ -47,6 +49,21 @@ export const pinecone = globalForDb.pinecone ?? getPineconeClient()
 
 if (process.env.NODE_ENV !== 'production') {
   globalForDb.pinecone = pinecone
+}
+
+// 3. Redis Client Initialization (Required for BullMQ queues/workers)
+const getRedisClient = (): Redis => {
+  const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379'
+  return new Redis(redisUrl, {
+    maxRetriesPerRequest: null, // Required for BullMQ queue operations
+    connectTimeout: 5000,
+  })
+}
+
+export const redisConnection = globalForDb.redis ?? getRedisClient()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForDb.redis = redisConnection
 }
 
 // Export database client types and schema definitions

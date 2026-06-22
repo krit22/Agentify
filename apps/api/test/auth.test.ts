@@ -24,6 +24,7 @@ vi.mock('@repo/db', () => {
     pinecone: {
       listIndexes: vi.fn(),
     },
+    redisConnection: {}, // Mock Redis connection singleton
   }
 })
 

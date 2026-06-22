@@ -1,5 +1,8 @@
 import { prisma } from '@repo/db'
 import type { IngestionStatus } from '@repo/db'
+import crypto from 'crypto'
+import { StorageService } from './storage.js'
+import { QueueService } from './queue.js'
 
 export interface ListDocumentsParams {
   orgId: string
@@ -73,4 +76,48 @@ export class DocumentService {
       },
     }
   }
+
+  /**
+   * Registers a new document upload: saves to Supabase, writes to PostgreSQL, and enqueues BullMQ processing.
+   */
+  public static async createDocument(params: {
+    orgId: string
+    file: File
+  }): Promise<{ id: string; title: string; status: string }> {
+    const { orgId, file } = params
+
+    // 1. Generate unique document ID
+    const documentId = crypto.randomUUID()
+
+    // 2. Upload file to Supabase Storage and obtain signed retrieve URL
+    const uploadResult = await StorageService.saveFile(file, documentId)
+
+    // 3. Register document details in PostgreSQL database with status QUEUED
+    const document = await prisma.document.create({
+      data: {
+        id: documentId,
+        orgId,
+        title: file.name,
+        sourceUrl: uploadResult.fileUrl,
+        status: 'QUEUED',
+        fileSize: uploadResult.fileSize,
+        version: 1,
+      },
+    })
+
+    // 4. Enqueue background layout extraction and indexing job in BullMQ Redis Queue
+    await QueueService.enqueueIngestion({
+      documentId: document.id,
+      orgId,
+      fileUrl: uploadResult.fileUrl,
+      fileName: file.name,
+    })
+
+    return {
+      id: document.id,
+      title: document.title,
+      status: document.status,
+    }
+  }
 }
+

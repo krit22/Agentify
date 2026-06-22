@@ -7,6 +7,12 @@
       "skillPath": "skills/iris-development/SKILL.md",
       "computedHash": "677663bc77ea89c1ba7de7ced05a2d0f16bbe7b5e75efa47a10a40091eeb039d"
     },
+    "openrouter-typescript-sdk": {
+      "source": "openrouterteam/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/typescript-sdk/SKILL.md",
+      "computedHash": "0cb0e2f07f6b42fb8974c2ee89ca3ba3a103dfe565f12bc7ca9f41945fc7227a"
+    },
     "redis-clustering": {
       "source": "redis/agent-skills",
       "sourceType": "github",

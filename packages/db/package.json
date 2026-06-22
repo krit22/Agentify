@@ -19,8 +19,9 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@pinecone-database/pinecone": "^3.0.0",
     "@prisma/client": "^5.15.0",
-    "@pinecone-database/pinecone": "^3.0.0"
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
