@@ -199,7 +199,8 @@ export class TicketService {
     let suggestedAnswer = lastAssistantMsg
 
     const apiKey = process.env.OPENROUTER_API_KEY
-    if (apiKey) {
+    const isE2e = process.env.IS_E2E_TEST === 'true'
+    if (apiKey && !isE2e) {
       try {
         const transcriptText = transcript
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -215,7 +216,7 @@ export class TicketService {
             'X-Title': 'Aegis AI',
           },
           body: JSON.stringify({
-            model: 'meta-llama/llama-3-8b-instruct:free',
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
             messages: [
               {
                 role: 'system',

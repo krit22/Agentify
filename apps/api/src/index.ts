@@ -1,10 +1,6 @@
+import './load-env.js'
 import { serve } from '@hono/node-server'
 import { app } from './app.js'
-import dotenv from 'dotenv'
-import path from 'path'
-
-// Load environment configurations
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
 

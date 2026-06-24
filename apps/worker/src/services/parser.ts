@@ -1,5 +1,6 @@
 import axios from 'axios'
 import FormData from 'form-data'
+import crypto from 'crypto'
 
 export interface UnstructuredElement {
   type: string
@@ -25,10 +26,6 @@ export class ParserService {
     const apiUrl = process.env.UNSTRUCTURED_API_URL || 'https://api.unstructured.io/general/v0/general'
     const apiKey = process.env.UNSTRUCTURED_API_KEY
 
-    if (!apiKey) {
-      throw new Error('UNSTRUCTURED_API_KEY is not defined in the environment.')
-    }
-
     // 1. Download target file from Supabase Storage
     console.log(`[PARSER] Downloading document asset: ${fileName}`)
     const fileResponse = await axios.get(fileUrl, { 
@@ -36,6 +33,28 @@ export class ParserService {
       timeout: 15000 // 15 seconds socket timeout limit
     })
     const fileBuffer = Buffer.from(fileResponse.data)
+
+    // Local bypass for plain text and markdown documents
+    const lowercaseName = fileName.toLowerCase()
+    if (lowercaseName.endsWith('.txt') || lowercaseName.endsWith('.md')) {
+      console.log(`[PARSER] Plain text/markdown detected. Bypassing Unstructured API for local parsing: ${fileName}`)
+      const textContent = fileBuffer.toString('utf-8')
+      return [
+        {
+          type: 'NarrativeText',
+          text: textContent,
+          element_id: crypto.randomUUID(),
+          metadata: {
+            page_number: 1,
+            section_header: 'General',
+          },
+        },
+      ]
+    }
+
+    if (!apiKey) {
+      throw new Error('UNSTRUCTURED_API_KEY is not defined in the environment.')
+    }
 
     // 2. Wrap file buffer inside multipart request body
     const form = new FormData()

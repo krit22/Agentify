@@ -1,9 +1,4 @@
-import dotenv from 'dotenv'
-import path from 'path'
-
-// Resolve environment variables BEFORE loading packages to prevent ESM lifecycle race conditions
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
-
+import './load-env.js'
 import { Worker } from 'bullmq'
 import { redisConnection } from '@repo/db'
 import { IngestionService } from './services/ingestion.js'

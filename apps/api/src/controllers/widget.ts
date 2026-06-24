@@ -100,8 +100,9 @@ ${matches.length > 0
       return streamSSE(c, async (stream) => {
         let fullReply = ''
 
-        if (!apiKey) {
-          // Stream a mock response if API Key is not configured
+        const isE2e = process.env.IS_E2E_TEST === 'true'
+        if (!apiKey || isE2e) {
+          // Stream a mock response if API Key is not configured or we are in E2E test mode
           const mockText = `[MOCK REPLY] Top score: ${topScore.toFixed(3)} (threshold: ${threshold}). Forced escalation: ${escalateForced ? 'YES' : 'NO'}. Matches found: ${matches.length}.`
           const words = mockText.split(' ')
           for (const word of words) {
@@ -123,7 +124,7 @@ ${matches.length > 0
                 'X-Title': 'Aegis AI',
               },
               body: JSON.stringify({
-                model: 'meta-llama/llama-3-8b-instruct:free',
+                model: 'meta-llama/llama-3.3-70b-instruct:free',
                 messages,
                 stream: true,
               }),
