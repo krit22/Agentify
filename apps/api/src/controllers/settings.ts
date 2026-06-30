@@ -50,4 +50,27 @@ export class SettingsController {
       return c.json({ error: 'An unexpected internal server error occurred during customization updates.' })
     }
   }
+
+  public static async clearKnowledgeBase(c: Context) {
+    try {
+      const orgId = c.get('orgId')
+      if (!orgId) {
+        c.status(401)
+        return c.json({ error: 'Unauthorized: Missing tenant context.' })
+      }
+
+      const stats = await SettingsService.clearKnowledgeBase(orgId)
+
+      c.status(200)
+      return c.json({
+        message: 'Knowledge base cleared successfully.',
+        remainingDbDocs: stats.remainingDbDocs,
+        remainingVectors: stats.remainingVectors
+      })
+    } catch (error) {
+      console.error('Clear knowledge base controller error:', error)
+      c.status(500)
+      return c.json({ error: 'An unexpected internal server error occurred while clearing the knowledge base.' })
+    }
+  }
 }

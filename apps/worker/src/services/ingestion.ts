@@ -70,6 +70,12 @@ export class IngestionService {
       const chunks = ChunkerService.chunkElements(elements)
       console.log(`[INGESTION] Generated ${chunks.length} chunks from document layouts.`)
 
+      // Context Enrichment: Inject document context (title/source) to prevent semantic disconnect
+      const docContext = document.title.replace(/\.[^/.]+$/, "") // strip extension
+      chunks.forEach((chunk) => {
+        chunk.rawContent = `[Source Document: ${docContext}${chunk.sectionHeader ? ` > ${chunk.sectionHeader}` : ''}]\n${chunk.rawContent}`
+      })
+
       const indexedChunks = await VectorService.upsertChunks(orgId, documentId, chunks)
 
       // 4. Save chunk records and transition state to READY in a database transaction

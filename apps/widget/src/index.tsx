@@ -43,6 +43,34 @@ const SpinnerIcon = () => (
   </svg>
 )
 
+const parseMarkdown = (text: string): string => {
+  if (!text) return ''
+
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  html = html.replace(/^### (.*?)$/gm, '<h4 class="font-bold text-xs mt-3 mb-1 text-zinc-900 dark:text-zinc-50">$1</h4>')
+  html = html.replace(/^## (.*?)$/gm, '<h3 class="font-bold text-sm mt-4 mb-2 text-zinc-900 dark:text-zinc-50">$1</h3>')
+  html = html.replace(/^# (.*?)$/gm, '<h2 class="font-bold text-base mt-4 mb-2 text-zinc-900 dark:text-zinc-50">$1</h2>')
+
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-zinc-900 dark:text-zinc-50">$1</strong>')
+  html = html.replace(/^\s*[\*\-]\s+(.*?)$/gm, '<li class="list-disc ml-4 pl-1 my-1 text-zinc-700 dark:text-zinc-300">$1</li>')
+  html = html.replace(/^\>\s+(.*?)$/gm, '<blockquote class="border-l-2 border-zinc-300 dark:border-zinc-700 pl-3 my-2 italic text-zinc-600 dark:text-zinc-400">$1</blockquote>')
+  html = html.replace(/`(.*?)`/g, '<code class="bg-zinc-200/60 dark:bg-zinc-800 px-1 rounded text-red-500 font-mono text-[10px]">$1</code>')
+
+  const paragraphs = html.split('\n\n')
+  const rendered = paragraphs.map((p) => {
+    if (p.startsWith('<h') || p.startsWith('<li') || p.startsWith('<block')) {
+      return p.replace(/\n/g, '<br />')
+    }
+    return `<div class="mb-2 last:mb-0">${p.replace(/\n/g, '<br />')}</div>`
+  })
+
+  return rendered.join('')
+}
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
@@ -312,15 +340,19 @@ export function App({
                 >
                   <div 
                     className={`
-                      text-xs px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap shadow-xs
+                      text-xs px-3.5 py-2.5 rounded-2xl leading-relaxed shadow-xs
                       ${msg.role === 'user' 
-                        ? 'text-white rounded-br-none' 
+                        ? 'text-white rounded-br-none whitespace-pre-wrap' 
                         : 'bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 border border-zinc-200/40 dark:border-zinc-800/40 rounded-bl-none'
                       }
                     `}
                     style={msg.role === 'user' ? { backgroundColor: brandColor } : undefined}
                   >
-                    {msg.content}
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <div dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.content) }} />
+                    )}
                   </div>
                 </div>
               ))}
@@ -329,7 +361,7 @@ export function App({
               {isStreaming && streamText && (
                 <div className="flex flex-col max-w-[80%] self-start">
                   <div className="text-xs px-3.5 py-2.5 rounded-2xl rounded-bl-none bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 border border-zinc-200/40 dark:border-zinc-800/40 leading-relaxed shadow-xs">
-                    {streamText}
+                    <div dangerouslySetInnerHTML={{ __html: parseMarkdown(streamText) }} />
                   </div>
                 </div>
               )}

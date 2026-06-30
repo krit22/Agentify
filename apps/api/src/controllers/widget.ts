@@ -137,10 +137,86 @@ export class WidgetController {
         }
       }
 
-      // 5. Query Pinecone
-      const matches = await WidgetService.queryPinecone(orgId, message)
-      const topScore = matches[0]?.score || 0
-      const escalateForced = topScore < threshold
+      console.log('\n┌────────────────────────────────────────────────────────┐')
+      console.log('│ 💬 [WIDGET CHAT] New User Message Received            │')
+      console.log(`│ Message:       "${message}"`)
+      console.log(`│ Session ID:    ${sessionId}`)
+      console.log(`│ Org ID:        ${orgId}`)
+      console.log('└────────────────────────────────────────────────────────┘')
+
+      console.log('⚙️  [RAG STEP 1/6] Running Intent Routing...')
+      const s1Start = performance.now()
+      console.log(`   ├─ [CALL OUT] Sending query intent request to 'poolside/laguna-m.1:free'`)
+      console.log(`   ├─ [PAYLOAD ] Message: "${message}"`)
+      const needsRetrieval = await WidgetService.routeIntent(message)
+      const s1Dur = performance.now() - s1Start
+      console.log(`   ├─ [RECEIVE ] Response received in ${s1Dur.toFixed(2)} ms`)
+      console.log(`   └─ [RESULT  ] Needs Knowledge Base Retrieval: ${needsRetrieval ? '🔍 YES' : '⚡ NO (Bypassing RAG)'}`)
+
+      let matches: any[] = []
+      let escalateForced = false
+      let topScore = 0
+
+      let s3Dur = 0
+      let s4Dur = 0
+      let s5Dur = 0
+
+      if (needsRetrieval) {
+        console.log('📡 [RAG STEP 2/4] Running Parallel Search (Dense Vector + Lexical FTS)...')
+        const s3Start = performance.now()
+        console.log(`   ├─ [CALL OUT] Querying Postgres FTS and Pinecone index parallel namespaces...`)
+        const [denseMatches, lexicalMatches] = await Promise.all([
+          WidgetService.queryPineconeBatched(orgId, [message]),
+          WidgetService.queryPostgresFTS(orgId, [message]),
+        ])
+        s3Dur = performance.now() - s3Start
+        console.log(`   ├─ [RECEIVE ] Database and Vector search results received in ${s3Dur.toFixed(2)} ms`)
+        console.log(`   ├─ [RESULT  ] Dense Pinecone matches:  ${denseMatches.length} candidates`)
+        console.log(`   └─ [RESULT  ] Lexical Postgres matches: ${lexicalMatches.length} candidates`)
+
+        console.log('🔀 [RAG STEP 3/4] Fusing matches with Reciprocal Rank Fusion (RRF)...')
+        const s4Start = performance.now()
+        const fusedCandidates = WidgetService.applyRRF(denseMatches, lexicalMatches)
+        s4Dur = performance.now() - s4Start
+        console.log(`   ├─ [COMPUTE ] In-memory RRF fusion computed in ${s4Dur.toFixed(2)} ms`)
+        console.log(`   └─ [RESULT  ] Total Fused candidates: ${fusedCandidates.length} chunks`)
+
+        console.log('🧠 [RAG STEP 4/4] Reranking top candidates with Cross-Encoder...')
+        const s5Start = performance.now()
+        console.log(`   ├─ [CALL OUT] Submitting ${fusedCandidates.length} chunks to 'nvidia/llama-nemotron-rerank-vl-1b-v2:free'`)
+        matches = await WidgetService.rerankCandidates(message, fusedCandidates, 5)
+        s5Dur = performance.now() - s5Start
+        console.log(`   ├─ [RECEIVE ] Reranker responses received in ${s5Dur.toFixed(2)} ms`)
+        console.log('   ├─ [RESULT  ] Top Reranked Matches:')
+        matches.forEach((m, idx) => {
+          console.log(`      [Match ${idx + 1}] ID: ${m.id} | Score: ${m.score.toFixed(4)} | Preview: "${m.content.slice(0, 65).replace(/\n/g, ' ')}..."`)
+        })
+
+        topScore = matches[0]?.score || 0
+        escalateForced = (topScore < threshold)
+
+        console.log(`🛡️  Doubt Gate Evaluation:`)
+        console.log(`   ├─ Top Match Score:    ${topScore.toFixed(4)}`)
+        console.log(`   ├─ Config Threshold:   ${threshold.toFixed(4)}`)
+        console.log(`   └─ Escalation Forced:  ${escalateForced ? '🔴 YES' : '🟢 NO'}`)
+        
+        console.log('\n⏱️  RAG Execution Timing Breakdown:')
+        console.log(`   ├─ [RAG STEP 1] Intent Routing:       ${s1Dur.toFixed(2)} ms`)
+        console.log(`   ├─ [RAG STEP 2] Parallel Search:      ${s3Dur.toFixed(2)} ms`)
+        console.log(`   ├─ [RAG STEP 3] RRF Fusion:           ${s4Dur.toFixed(2)} ms`)
+        console.log(`   ├─ [RAG STEP 4] Cross-Rerank:         ${s5Dur.toFixed(2)} ms`)
+        console.log(`   └─ [TOTAL TIME] Pipeline Duration:   ${(s1Dur + s3Dur + s4Dur + s5Dur).toFixed(2)} ms`)
+        console.log('──────────────────────────────────────────────────────────\n')
+      } else {
+        console.log('🟢 Doubt Gate Evaluation: Bypassed RAG for small talk / greetings. Escalation Forced: 🟢 NO')
+        console.log('\n⏱️  RAG Execution Timing Breakdown:')
+        console.log(`   ├─ [RAG STEP 1] Intent Routing:       ${s1Dur.toFixed(2)} ms`)
+        console.log(`   ├─ [RAG STEP 2-4] Search & Rerank:   Bypassed`)
+        console.log(`   └─ [TOTAL TIME] Pipeline Duration:   ${s1Dur.toFixed(2)} ms`)
+        console.log('──────────────────────────────────────────────────────────\n')
+        matches = []
+        escalateForced = false
+      }
 
       // Compile system instructions & messages list
       const systemPrompt = `You are Aegis AI, the automated support agent for this organization.
@@ -201,7 +277,7 @@ ${matches.length > 0
                 'X-Title': 'Aegis AI',
               },
               body: JSON.stringify({
-                model: process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                model: process.env.OPENROUTER_MODEL || 'poolside/laguna-m.1:free',
                 messages,
                 stream: true,
                 max_tokens: 2048,

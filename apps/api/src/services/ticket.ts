@@ -216,7 +216,7 @@ export class TicketService {
             'X-Title': 'Aegis AI',
           },
           body: JSON.stringify({
-            model: process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free',
+            model: process.env.OPENROUTER_MODEL || 'poolside/laguna-m.1:free',
             messages: [
               {
                 role: 'system',

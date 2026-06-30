@@ -94,4 +94,17 @@ export class StorageService {
       extension: ext,
     }
   }
+
+  /**
+   * Deletes one or more files from Supabase Storage.
+   */
+  public static async deleteFiles(fileNames: string[]): Promise<void> {
+    if (fileNames.length === 0) return
+    const client = getSupabaseClient()
+    const supabaseBucket = process.env.SUPABASE_BUCKET || 'documents'
+    const { error } = await client.storage.from(supabaseBucket).remove(fileNames)
+    if (error) {
+      console.error('[STORAGE WARNING] Failed to delete files from Supabase storage:', error.message)
+    }
+  }
 }

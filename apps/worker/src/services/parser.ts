@@ -30,6 +30,9 @@ export class ParserService {
     console.log(`[PARSER] Downloading document asset: ${fileName}`)
     const fileResponse = await axios.get(fileUrl, { 
       responseType: 'arraybuffer',
+      headers: {
+        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      },
       timeout: 15000 // 15 seconds socket timeout limit
     })
     const fileBuffer = Buffer.from(fileResponse.data)

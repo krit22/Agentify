@@ -30,4 +30,12 @@ settingsRouter.patch(
   SettingsController.update
 )
 
+// POST /api/orgs/settings/clear-knowledge-base
+// Purges all documents, vector namespaces, and Supabase storage files.
+settingsRouter.post(
+  '/clear-knowledge-base',
+  clerkAuthMiddleware(),
+  SettingsController.clearKnowledgeBase
+)
+
 export default settingsRouter

@@ -22,10 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings, HelpCircle, Loader2, Sun, Moon, Monitor, Copy, Check } from "lucide-react";
+import { Settings, HelpCircle, Loader2, Sun, Moon, Monitor, Copy, Check, Trash2, AlertTriangle } from "lucide-react";
 
 export default function SettingsPage() {
-  const { settings, isLoading, isUpdating, updateSettings } = useSettings();
+  const { settings, isLoading, isUpdating, updateSettings, clearKnowledgeBase, isClearing } = useSettings();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const { orgId } = useAuth();
@@ -86,6 +86,20 @@ export default function SettingsPage() {
         allowedDomains: parsedDomains,
       },
     });
+  };
+
+  const handleClearKnowledgeBase = async () => {
+    const confirmed = window.confirm(
+      "WARNING: This will permanently delete all ingested documents, raw stored files, and purge all vectorized embeddings from the Pinecone index.\n\nAre you sure you want to clear the entire knowledge base? This action is irreversible."
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await clearKnowledgeBase();
+      alert(`Knowledge base cleared successfully!\nRemaining documents in DB: ${res.remainingDbDocs}\nRemaining vector embeddings in Pinecone: ${res.remainingVectors}`);
+    } catch (err: any) {
+      alert(`Error clearing knowledge base: ${err.message || err}`);
+    }
   };
 
   const apiHost = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname.replace(':3001', '')}:3000` : 'http://localhost:3000';
@@ -411,6 +425,44 @@ export default function SettingsPage() {
                 <strong>Inline instructions:</strong> Set up a matching target container element (e.g. <code>&lt;div id=&quot;aegis-chat-widget&quot;&gt;</code>) somewhere on the page. The loader will automatically mount the chat module within that specific element rather than generating a floating trigger bubble in the bottom corner.
               </p>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone */}
+      <Card className="border border-red-200/80 bg-red-50/10 dark:border-red-900/30 dark:bg-red-950/10">
+        <CardHeader>
+          <CardTitle className="text-red-600 dark:text-red-400 flex items-center gap-2 text-xl font-bold">
+            <Trash2 className="size-5 shrink-0" /> Danger Zone
+          </CardTitle>
+          <CardDescription className="text-red-500/80 dark:text-red-400/70 text-xs">
+            Permanently delete all ingested documents, raw stored files, and purge all vectorized embeddings from the Pinecone index.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between border border-red-200/50 dark:border-red-900/20 rounded-xl p-4 bg-red-50/5 dark:bg-red-950/5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Clear Knowledge Base</span>
+              <span className="text-xs text-zinc-500">Purge database records, vector stores, and raw assets.</span>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isClearing}
+              onClick={handleClearKnowledgeBase}
+              className="gap-1.5 font-semibold"
+            >
+              {isClearing ? (
+                <>
+                  <Loader2 className="animate-spin size-4 shrink-0" />
+                  Clearing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-4 shrink-0" /> Clear All Data
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

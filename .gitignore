@@ -36,9 +36,6 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
-backend_architecture.md
-frontend_architecture.md
-widget_architecture.md
+docs/
 .agents/*
 AGENTS.md
-PRD.md

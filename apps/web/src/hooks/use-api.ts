@@ -37,6 +37,17 @@ export function useSettings() {
     },
   });
 
+  const clearMutation = useMutation({
+    mutationFn: () =>
+      fetchWithAuth("/api/orgs/settings/clear-knowledge-base", {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", orgId] });
+    },
+  });
+
   return {
     settings: query.data,
     isLoading: query.isLoading,
@@ -44,6 +55,8 @@ export function useSettings() {
     error: query.error,
     updateSettings: mutation.mutate,
     isUpdating: mutation.isPending,
+    clearKnowledgeBase: clearMutation.mutateAsync,
+    isClearing: clearMutation.isPending,
   };
 }
 

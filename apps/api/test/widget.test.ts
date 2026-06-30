@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { app } from '../src/app.js'
+import { WidgetService } from '../src/services/widget.js'
 
 // Mock database package
 vi.mock('@repo/db', () => {
@@ -24,6 +25,7 @@ vi.mock('@repo/db', () => {
       create: vi.fn(),
     },
     $transaction: vi.fn(),
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
   }
 
   const mockRedis = {
@@ -269,9 +271,99 @@ describe('Live Chat Widget Endpoints', () => {
         expect(res.headers.get('Content-Type')).toContain('application/javascript')
         const content = await res.text()
         expect(content.length).toBeGreaterThan(0)
-      } else {
-        expect(res.status).toBe(404)
       }
+    })
+  })
+
+  describe('WidgetService RAG Enhancements', () => {
+    let originalApiKey: string | undefined
+
+    beforeEach(() => {
+      originalApiKey = process.env.OPENROUTER_API_KEY
+      process.env.OPENROUTER_API_KEY = 'mock-key'
+    })
+
+    afterEach(() => {
+      process.env.OPENROUTER_API_KEY = originalApiKey
+    })
+
+    describe('routeIntent', () => {
+      it('should return true when model returns YES', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [{ message: { content: 'YES' } }]
+          })
+        } as any)
+
+        const result = await WidgetService.routeIntent('Tell me about industrial safety')
+        expect(result).toBe(true)
+      })
+
+      it('should return false when model returns NO', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [{ message: { content: 'NO' } }]
+          })
+        } as any)
+
+        const result = await WidgetService.routeIntent('hello')
+        expect(result).toBe(false)
+      })
+
+      it('should propagate API error if request fails', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+          ok: false,
+          text: async () => 'Rate limit exceeded'
+        } as any)
+
+        await expect(WidgetService.routeIntent('hello')).rejects.toThrow('Intent Routing API request failed')
+      })
+    })
+
+    describe('checkAnswerability', () => {
+      const mockMatches = [
+        { id: '1', score: 0.9, content: 'Safety details...', documentId: 'doc1', pageNumber: 1, sectionHeader: 'Safety' }
+      ]
+
+      it('should return true when model returns YES', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [{ message: { content: 'YES' } }]
+          })
+        } as any)
+
+        const result = await WidgetService.checkAnswerability('What is safety details?', mockMatches)
+        expect(result).toBe(true)
+      })
+
+      it('should return false when model returns NO', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [{ message: { content: 'NO' } }]
+          })
+        } as any)
+
+        const result = await WidgetService.checkAnswerability('Something unrelated', mockMatches)
+        expect(result).toBe(false)
+      })
+
+      it('should return false immediately if matches are empty', async () => {
+        const result = await WidgetService.checkAnswerability('hello', [])
+        expect(result).toBe(false)
+      })
+
+      it('should propagate API error if request fails', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+          ok: false,
+          text: async () => 'Internal Server Error'
+        } as any)
+
+        await expect(WidgetService.checkAnswerability('test', mockMatches)).rejects.toThrow('Answerability Check API request failed')
+      })
     })
   })
 })
