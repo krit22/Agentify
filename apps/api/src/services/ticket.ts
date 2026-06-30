@@ -216,7 +216,7 @@ export class TicketService {
             'X-Title': 'Aegis AI',
           },
           body: JSON.stringify({
-            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            model: process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free',
             messages: [
               {
                 role: 'system',
@@ -227,7 +227,8 @@ export class TicketService {
                 content: `Conversation transcript:\n${transcriptText}\n\nTicket Summary: ${ticket.userSummary}`
               }
             ],
-            response_format: { type: 'json_object' }
+            response_format: { type: 'json_object' },
+            max_tokens: 1024,
           }),
         })
 

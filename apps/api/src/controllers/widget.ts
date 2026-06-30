@@ -3,8 +3,85 @@ import { streamSSE } from 'hono/streaming'
 import { prisma } from '@repo/db'
 import { WidgetService } from '../services/widget.js'
 import type { WidgetChatRequest, TicketEscalationInput } from '@repo/schemas'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 export class WidgetController {
+  /**
+   * Public script resolver serving the compiled Preact widget script dynamically with caching headers.
+   */
+  public static async script(c: Context) {
+    try {
+      const scriptPath = path.resolve(process.cwd(), '../widget/dist/widget.js')
+      const scriptContent = await fs.readFile(scriptPath, 'utf-8')
+      
+      return c.text(scriptContent, 200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600', // Cache script for 1 hour
+      })
+    } catch (err) {
+      console.error('Failed to read widget script bundle:', err)
+      c.status(404)
+      return c.json({ error: 'Widget script is not compiled or missing.' })
+    }
+  }
+
+  /**
+   * Public configuration resolver verifying Origin and returning widget configuration properties.
+   */
+  public static async config(c: Context) {
+    try {
+      const orgId = c.req.query('orgId')
+      if (!orgId) {
+        c.status(400)
+        return c.json({ error: 'Bad Request: Missing orgId parameter.' })
+      }
+
+      // 1. Verify Origin
+      const origin = c.req.header('Origin')
+      const referer = c.req.header('Referer')
+      
+      // Handle verifyOrigin catching errors if orgId doesn't exist
+      let originOk = false
+      try {
+        originOk = await WidgetService.verifyOrigin(orgId, origin, referer)
+      } catch {
+        c.status(404)
+        return c.json({ error: 'Not Found: Organization context not found.' })
+      }
+
+      if (!originOk) {
+        c.status(403)
+        return c.json({ error: 'Forbidden: Origin is not permitted.' })
+      }
+
+      // 2. Fetch branding configurations and settings
+      const settings = await prisma.organization.findUnique({
+        where: { id: orgId },
+        include: {
+          settings: true,
+          widgetConfig: true,
+        },
+      })
+
+      if (!settings) {
+        c.status(404)
+        return c.json({ error: 'Not Found: Organization context not found.' })
+      }
+
+      c.status(200)
+      return c.json({
+        brandColor: settings.widgetConfig?.brandColor || '#18181b',
+        greetingMessage: settings.widgetConfig?.greetingMessage || 'Hello! How can we help you today?',
+        escalationSLAHours: settings.settings?.escalationSLAHours || 24,
+      })
+    } catch (err) {
+      console.error('Widget config endpoint error:', err)
+      c.status(500)
+      return c.json({ error: 'An unexpected internal server error occurred.' })
+    }
+  }
+
   /**
    * SSE Stream powering live AI support responses with Score-based Doubt Gate checking.
    */
@@ -124,9 +201,10 @@ ${matches.length > 0
                 'X-Title': 'Aegis AI',
               },
               body: JSON.stringify({
-                model: 'meta-llama/llama-3.3-70b-instruct:free',
+                model: process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free',
                 messages,
                 stream: true,
+                max_tokens: 2048,
               }),
             })
 

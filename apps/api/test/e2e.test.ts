@@ -250,7 +250,7 @@ describe('Aegis AI End-to-End (E2E) Integration Tests', () => {
         },
       })
       const listBody = await listRes.json()
-      const doc = listBody.documents.find((d: any) => d.id === testDocumentId)
+      const doc = listBody.documents.find((d: { id: string; status: string; errorMessage?: string }) => d.id === testDocumentId)
 
       console.log(`[E2E TEST POLLING] Attempt ${attempts}: Document status = ${doc?.status}`)
 
@@ -370,7 +370,7 @@ describe('Aegis AI End-to-End (E2E) Integration Tests', () => {
     })
 
     expect(dbTicket?.status).toBe('PENDING_CUSTOMER')
-    const transcript = dbTicket?.conversation.transcript as any[]
+    const transcript = dbTicket?.conversation.transcript as { role: string; content: string }[]
     expect(transcript[transcript.length - 1].content).toContain('schedule a brief call')
   })
 
@@ -402,7 +402,7 @@ describe('Aegis AI End-to-End (E2E) Integration Tests', () => {
     })
 
     expect(dbTicket?.status).toBe('OPEN')
-    const transcript = dbTicket?.conversation.transcript as any[]
+    const transcript = dbTicket?.conversation.transcript as { role: string; content: string }[]
     expect(transcript[transcript.length - 1].content).toContain('tomorrow at 2 PM')
   })
 

@@ -6,6 +6,20 @@ import type { AppEnv } from '../types/index.js'
 
 const widgetRouter = new Hono<AppEnv>()
 
+// GET /api/widget/script
+// Public script loader endpoint serving the dynamic Preact bundle script
+widgetRouter.get(
+  '/script',
+  WidgetController.script
+)
+
+// GET /api/widget/config
+// Public configuration endpoint verifying permitted origins and returning styles config parameters
+widgetRouter.get(
+  '/config',
+  WidgetController.config
+)
+
 // POST /api/widget/chat
 // Public chat interface endpoint executing similarity gates, embeddings, and SSE streaming responses
 widgetRouter.post(

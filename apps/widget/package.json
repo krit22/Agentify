@@ -1,0 +1,24 @@
+{
+  "name": "widget",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "^10.22.0",
+    "gsap": "^3.12.5"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.8.2",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
+  }
+}

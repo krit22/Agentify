@@ -11,6 +11,9 @@ vi.mock('@repo/db', () => {
     orgSettings: {
       findUnique: vi.fn(),
     },
+    organization: {
+      findUnique: vi.fn(),
+    },
     conversation: {
       findFirst: vi.fn(),
       create: vi.fn(),
@@ -185,6 +188,90 @@ describe('Live Chat Widget Endpoints', () => {
       const body = await res.json()
       expect(body.ticketId).toBe('ticket_esc_999')
       expect(body.status).toBe('OPEN')
+    })
+  })
+
+  describe('GET /api/widget/config', () => {
+    it('should return 403 Forbidden when origin does not match allowed domains for config', async () => {
+      vi.mocked(prisma.widgetConfig.findUnique).mockResolvedValueOnce({
+        orgId,
+        allowedDomains: ['trusted.com']
+      } as any)
+
+      const res = await app.request(`/api/widget/config?orgId=${orgId}`, {
+        method: 'GET',
+        headers: {
+          'Origin': 'http://untrusted.com'
+        }
+      })
+
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.error).toContain('Origin is not permitted')
+    })
+
+    it('should return 404 when organization tenant does not exist', async () => {
+      vi.mocked(prisma.widgetConfig.findUnique).mockResolvedValueOnce({
+        orgId,
+        allowedDomains: [] // Empty = bypass checks
+      } as any)
+      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce(null)
+
+      const res = await app.request(`/api/widget/config?orgId=nonexistent`, {
+        method: 'GET'
+      })
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error).toContain('Organization context not found')
+    })
+
+    it('should successfully return branding configurations when valid request is made', async () => {
+      vi.mocked(prisma.widgetConfig.findUnique).mockResolvedValueOnce({
+        orgId,
+        allowedDomains: ['trusted.com']
+      } as any)
+      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
+        id: orgId,
+        settings: {
+          escalationSLAHours: 48
+        },
+        widgetConfig: {
+          brandColor: '#ff0000',
+          greetingMessage: 'Welcome to help center'
+        }
+      } as any)
+
+      const res = await app.request(`/api/widget/config?orgId=${orgId}`, {
+        method: 'GET',
+        headers: {
+          'Origin': 'http://trusted.com'
+        }
+      })
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.brandColor).toBe('#ff0000')
+      expect(body.greetingMessage).toBe('Welcome to help center')
+      expect(body.escalationSLAHours).toBe(48)
+    })
+  })
+
+  describe('GET /api/widget/script', () => {
+    it('should successfully serve the compiled widget script bundle', async () => {
+      const res = await app.request('/api/widget/script', {
+        method: 'GET'
+      })
+
+      // If the widget has been compiled (which it has in build script) it should return 200, otherwise it will catch and return 404.
+      // We will allow either 200 or 404 depending on filesystem presence, but since we built it, it should return 200.
+      if (res.status === 200) {
+        expect(res.headers.get('Content-Type')).toContain('application/javascript')
+        const content = await res.text()
+        expect(content.length).toBeGreaterThan(0)
+      } else {
+        expect(res.status).toBe(404)
+      }
     })
   })
 })

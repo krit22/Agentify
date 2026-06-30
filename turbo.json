@@ -13,9 +13,11 @@
     "SUPABASE_SERVICE_ROLE_KEY",
     "SUPABASE_BUCKET",
     "OPENROUTER_API_KEY",
+    "OPENROUTER_MODEL",
     "UNSTRUCTURED_API_KEY",
     "UNSTRUCTURED_API_URL",
-    "RESEND_API_KEY"
+    "RESEND_API_KEY",
+    "IS_E2E_TEST"
   ],
   "tasks": {
     "build": {

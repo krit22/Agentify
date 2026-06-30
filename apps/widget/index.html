@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis Widget Test Harness</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: #fafafa;
+      color: #18181b;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: white;
+      padding: 1.5rem;
+      border: 1px solid #e4e4e7;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .inline-wrapper {
+      border: 1px solid #e4e4e7;
+      border-radius: 12px;
+      height: 500px;
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Aegis AI Widget Test Rig</h1>
+    <p>Use this static harness to preview layout styles and cross-origin fetch boundaries.</p>
+
+    <!-- Floating Widget Loader (Standard Injection Mode) -->
+    <div class="panel">
+      <h3>Floating Injection PREVIEW</h3>
+      <p>The launcher bubble floats in the bottom-right corner. Click it to expand the support chat interface.</p>
+    </div>
+
+    <!-- Inline Widget Mount target (Inline Injection Mode) -->
+    <div class="panel">
+      <h3>Inline Container Injection PREVIEW</h3>
+      <p>The widget renders directly inside this container box frame rather than floating globally.</p>
+      <div id="test-inline-container" class="inline-wrapper"></div>
+    </div>
+  </div>
+
+  <!-- Standard Floating FAB loader injection -->
+  <script 
+    src="/dist/widget.js" 
+    data-org-id="org_3FY6ySWuDGyfeIypua5ygFZImQr"
+    async
+  ></script>
+
+  <!-- Inline Mount injection (Uncomment to test inline container embedding) -->
+  <!--
+  <script 
+    src="/dist/widget.js" 
+    data-org-id="org_3FY6ySWuDGyfeIypua5ygFZImQr"
+    data-container-id="test-inline-container"
+    async
+  ></script>
+  -->
+</body>
+</html>

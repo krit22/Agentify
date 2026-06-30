@@ -38,6 +38,7 @@ yarn-error.log*
 *.pem
 backend_architecture.md
 frontend_architecture.md
+widget_architecture.md
 .agents/*
 AGENTS.md
 PRD.md

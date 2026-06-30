@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useSettings } from "@/hooks/use-api";
 import { useTheme } from "next-themes";
+import { useAuth } from "@clerk/nextjs";
 import {
   Card,
   CardContent,
@@ -21,12 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings, HelpCircle, Loader2, Sun, Moon, Monitor } from "lucide-react";
+import { Settings, HelpCircle, Loader2, Sun, Moon, Monitor, Copy, Check } from "lucide-react";
 
 export default function SettingsPage() {
   const { settings, isLoading, isUpdating, updateSettings } = useSettings();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
+  const { orgId } = useAuth();
+  const [copiedType, setCopiedType] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState<'html' | 'react' | 'inline'>('html');
+
+  const handleCopy = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(null), 2000);
+  };
 
   React.useEffect(() => {
     const frameId = requestAnimationFrame(() => setMounted(true));
@@ -77,6 +87,11 @@ export default function SettingsPage() {
       },
     });
   };
+
+  const apiHost = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname.replace(':3001', '')}:3000` : 'http://localhost:3000';
+  const htmlSnippet = `<script\n  src="${apiHost}/api/widget/script"\n  data-org-id="${orgId || ''}"\n  async\n></script>`;
+  const reactSnippet = `import Script from 'next/script';\n\nexport default function AegisSupportWidget() {\n  return (\n    <Script\n      src="${apiHost}/api/widget/script"\n      data-org-id="${orgId || ''}"\n      strategy="afterInteractive"\n    />\n  );\n}`;
+  const inlineSnippet = `<!-- Container Target Mount Element -->\n<div id="aegis-chat-widget" style="height: 600px; width: 400px; border-radius: 12px; overflow: hidden;"></div>\n\n<!-- Script Injection -->\n<script\n  src="${apiHost}/api/widget/script"\n  data-org-id="${orgId || ''}"\n  data-container-id="aegis-chat-widget"\n  async\n></script>`;
 
   if (isLoading) {
     return (
@@ -307,6 +322,95 @@ export default function SettingsPage() {
                 <Monitor className="size-3.5" /> System
               </Button>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Widget Integration Card */}
+      <Card className="border border-zinc-200/80 bg-white/70 dark:border-zinc-800/80 dark:bg-zinc-900/50">
+        <CardHeader>
+          <CardTitle>Widget Integration Snippet</CardTitle>
+          <CardDescription>
+            Inject the automated responder widget into your websites. Copy and paste the script below before the closing body tag.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          {/* Tab Selector Button Row */}
+          <div className="flex justify-between items-center bg-zinc-100/50 dark:bg-zinc-950/20 border border-zinc-200/80 dark:border-zinc-800/50 p-2 rounded-xl">
+            <span className="text-xs font-semibold text-zinc-500 pl-1">Integration Format</span>
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60">
+              <Button
+                variant={activeTab === 'html' ? "secondary" : "ghost"}
+                size="sm"
+                type="button"
+                onClick={() => setActiveTab('html')}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold ${activeTab === 'html' ? "bg-white dark:bg-zinc-700 shadow-xs text-zinc-900 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+              >
+                HTML Script
+              </Button>
+              <Button
+                variant={activeTab === 'react' ? "secondary" : "ghost"}
+                size="sm"
+                type="button"
+                onClick={() => setActiveTab('react')}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold ${activeTab === 'react' ? "bg-white dark:bg-zinc-700 shadow-xs text-zinc-900 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+              >
+                React/Next.js
+              </Button>
+              <Button
+                variant={activeTab === 'inline' ? "secondary" : "ghost"}
+                size="sm"
+                type="button"
+                onClick={() => setActiveTab('inline')}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold ${activeTab === 'inline' ? "bg-white dark:bg-zinc-700 shadow-xs text-zinc-900 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+              >
+                Inline Target
+              </Button>
+            </div>
+          </div>
+
+          {/* Snippet Code Box */}
+          <div className="relative rounded-xl border border-zinc-200/80 bg-zinc-950 dark:border-zinc-800/80 p-4 font-mono text-[11px] text-zinc-200 leading-relaxed overflow-x-auto min-h-[120px]">
+            <pre className="whitespace-pre">
+              {activeTab === 'html' && htmlSnippet}
+              {activeTab === 'react' && reactSnippet}
+              {activeTab === 'inline' && inlineSnippet}
+            </pre>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => handleCopy(
+                activeTab === 'html' ? htmlSnippet : activeTab === 'react' ? reactSnippet : inlineSnippet,
+                activeTab
+              )}
+              className="absolute top-3 right-3 size-7 bg-zinc-900/85 hover:bg-zinc-800 text-zinc-300 border-zinc-800 rounded-lg shrink-0 outline-hidden hover:text-white"
+              title="Copy snippet to clipboard"
+            >
+              {copiedType === activeTab ? (
+                <Check className="size-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-3.5 dark:border-zinc-800/80 dark:bg-zinc-900/25 text-xs text-zinc-500 leading-relaxed">
+            {activeTab === 'html' && (
+              <p>
+                <strong>HTML instructions:</strong> Simply paste this tag inside the <code>&lt;body&gt;</code> element of any index.html or static website page. Ensure the <code>data-org-id</code> matches your workspace.
+              </p>
+            )}
+            {activeTab === 'react' && (
+              <p>
+                <strong>Next.js instructions:</strong> Import the code inside your root layout or page template using Next.js&apos;s standard <code>next/script</code> helper component.
+              </p>
+            )}
+            {activeTab === 'inline' && (
+              <p>
+                <strong>Inline instructions:</strong> Set up a matching target container element (e.g. <code>&lt;div id=&quot;aegis-chat-widget&quot;&gt;</code>) somewhere on the page. The loader will automatically mount the chat module within that specific element rather than generating a floating trigger bubble in the bottom corner.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

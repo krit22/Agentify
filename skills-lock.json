@@ -103,6 +103,12 @@
       "skillPath": "skills/frameworks/clerk-vue-patterns/SKILL.md",
       "computedHash": "f6e57b2cc237d9c2e407800827b2f6984a4bbb9630c6e5c3bfa7657ac3081db6"
     },
+    "developing-preact": {
+      "source": "oaustegard/claude-skills",
+      "sourceType": "github",
+      "skillPath": "developing-preact/SKILL.md",
+      "computedHash": "37173a7288fc2cbbacd8af03378059babc82a784c8bfdfc7498dcb29096966bf"
+    },
     "email-best-practices": {
       "source": "resend/email-best-practices",
       "sourceType": "github",
@@ -162,6 +168,12 @@
       "sourceType": "github",
       "skillPath": "skills/hono/SKILL.md",
       "computedHash": "220e5e1b12bbaeec49ec362b6e2262d77632d0536e9758bba9acbbc323fef990"
+    },
+    "lucide-icons": {
+      "source": "aksuharun/skills",
+      "sourceType": "github",
+      "skillPath": "lucide-icons/SKILL.md",
+      "computedHash": "f9e81a2119173db069d84712943a45c3a43ea5baf87bedabe3c859fe2d40d06e"
     },
     "neon": {
       "source": "neondatabase/agent-skills",
@@ -319,6 +331,12 @@
       "skillPath": "skills/resend-cli/SKILL.md",
       "computedHash": "d3514da9f8e21c77697afcf4a499150e327d0277fb8c7b25b74340f98a4118a9"
     },
+    "streaming": {
+      "source": "assistant-ui/skills",
+      "sourceType": "github",
+      "skillPath": "assistant-ui/skills/streaming/SKILL.md",
+      "computedHash": "20221d04867a93cdf254a74d9275f5d758b84607f214c3a8eb326520de7521b8"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
@@ -331,6 +349,12 @@
       "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
       "computedHash": "0d2c4857a7d6fdcd3fbc46e458fa4c497f029cab89a01548b3defce203003932"
     },
+    "tailwindcss": {
+      "source": "hairyf/skills",
+      "sourceType": "github",
+      "skillPath": "skills/tailwindcss/SKILL.md",
+      "computedHash": "676d95536c3c4a64215535ff09128d6e8d5163eb3fc204ed2cfde61e87b5d892"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",
@@ -342,6 +366,12 @@
       "sourceType": "github",
       "skillPath": "skills/unstructured/SKILL.md",
       "computedHash": "4792012e9b69aa0dd30ec337617198b1cead726e92dca4d77a3ca5f3df176dc7"
+    },
+    "vite": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vite/SKILL.md",
+      "computedHash": "867ff66238f3152e9c494339ad08dc432dd0df5bcf5cc7a00b61a72b580eb908"
     }
   }
 }
